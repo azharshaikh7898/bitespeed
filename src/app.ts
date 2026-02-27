@@ -4,7 +4,12 @@ import identifyRoute from './routes/identify.route';
 const app = express();
 
 app.use(express.json());
-app.use('/api', identifyRoute);
+app.use('/', identifyRoute);
+
+// Root health check route
+app.get('/', (req, res) => {
+  res.send('API is running');
+});
 
 // Error handler
 app.use((err: any, req: any, res: any, next: any) => {

@@ -8,7 +8,7 @@ interface IdentifyInput {
 }
 
 interface IdentifyResult {
-  primaryContatctId: number;
+  primaryContactId: number;
   emails: string[];
   phoneNumbers: string[];
   secondaryContactIds: number[];
@@ -33,6 +33,13 @@ class IdentifyService {
 
     if (contacts.length === 0) {
       // No contact exists, create primary
+      // Check if email or phone already exists (shouldn't, but double-check for safety)
+      const existingEmail = email ? await prisma.contact.findUnique({ where: { email } }) : null;
+      const existingPhone = phoneNumber ? await prisma.contact.findUnique({ where: { phoneNumber } }) : null;
+      if (existingEmail || existingPhone) {
+        // If either exists, return error or handle gracefully
+        throw new Error('Contact with this email or phone number already exists');
+      }
       const newContact = await prisma.contact.create({
         data: {
           email,
@@ -41,7 +48,7 @@ class IdentifyService {
         },
       });
       return {
-        primaryContatctId: newContact.id,
+        primaryContactId: newContact.id,
         emails: newContact.email ? [newContact.email] : [],
         phoneNumbers: newContact.phoneNumber ? [newContact.phoneNumber] : [],
         secondaryContactIds: [],
@@ -89,7 +96,10 @@ class IdentifyService {
     const emails = Array.from(new Set(relatedContacts.map(c => c.email).filter(Boolean)));
     const phoneNumbers = Array.from(new Set(relatedContacts.map(c => c.phoneNumber).filter(Boolean)));
     let newSecondary = null;
-    if ((email && !emails.includes(email)) || (phoneNumber && !phoneNumbers.includes(phoneNumber))) {
+    // Only create if email/phone is not already present globally
+    const globalEmailExists = email ? await prisma.contact.findFirst({ where: { email } }) : null;
+    const globalPhoneExists = phoneNumber ? await prisma.contact.findFirst({ where: { phoneNumber } }) : null;
+    if ((email && !globalEmailExists) && (phoneNumber && !globalPhoneExists)) {
       newSecondary = await prisma.contact.create({
         data: {
           email,
@@ -98,6 +108,9 @@ class IdentifyService {
           linkedId: primary.id,
         },
       });
+    } else {
+      // If either exists, skip creation and just return existing contact info
+      // Optionally, you can log or handle this case as needed
     }
 
     // Re-fetch all related contacts if new secondary was created
@@ -113,7 +126,7 @@ class IdentifyService {
       : relatedContacts;
 
     return {
-      primaryContatctId: primary.id,
+      primaryContactId: primary.id,
       emails: Array.from(new Set(finalContacts.map(c => c.email).filter((e): e is string => !!e))),
       phoneNumbers: Array.from(new Set(finalContacts.map(c => c.phoneNumber).filter((p): p is string => !!p))),
       secondaryContactIds: finalContacts
