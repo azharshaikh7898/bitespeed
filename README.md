@@ -16,9 +16,6 @@ When a POST request is made to `/identify` with an email and phone number, the s
 4. Ensures no duplicate contacts are created.
 5. Returns all related emails, phone numbers, and secondary contact IDs.
 
-## Deployment URL
-Add your deployment URL here (e.g. https://your-app-url.com)
-
 ## Sample curl Request
 ```
 curl -X POST https://your-app-url.com/identify \
